@@ -160,11 +160,12 @@
       transform: rotate(-1deg);
     }
     
+    /* REPLACE WITH THIS */
     #status{
       color: #718096;
       font-size: 14px;
       font-weight: 600;
-      transform: rotate(0.5deg);
+      /* The 'transform' line is now gone */
     }
     
     #board{
@@ -247,14 +248,22 @@
       transform: rotate(0deg) scale(1.05) !important;
     }
     
+    /* REPLACE WITH THIS */
     #secretReveal{
       color: #d69e2e;
       font-weight: 700;
       background: rgba(214, 158, 46, 0.1);
-      padding: 6px 12px;
+      padding: 10px 15px; /* Increased padding */
       border-radius: 15px;
       border: 2px dashed #d69e2e;
       transform: rotate(1deg);
+      /* Add these new lines */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: 40px;
     }
     
     #candidatesDump{
@@ -696,8 +705,10 @@
 
   <div id="meta">
     <div id="mode">Mode: Think-of-a-word</div>
-    <div id="status">Candidates left: —</div>
-    <div id="secretReveal" aria-live="polite"></div>
+    <div id="secretReveal" aria-live="polite">
+      <div id="secretWordText"></div>
+      <div id="status">Candidates left: —</div>
+    </div>
   </div>
 
   <div id="board" aria-live="polite"></div>
@@ -903,7 +914,7 @@
       secretWord = "";
       currentCandidates = [...dictionary];
       updateStatus('—');
-      secretReveal.textContent = '';
+      document.getElementById('secretWordText').textContent = '';;
       dumpCandidates(null);
     }
 
@@ -912,7 +923,7 @@
     function randomWord(){
       const w = dictionary[Math.floor(Math.random()*dictionary.length)];
       secretWord = w.toLowerCase();
-      secretReveal.textContent = 'Secret (for you): ' + w.toUpperCase();
+      document.getElementById('secretWordText').textContent = 'Secret (for you): ' + w.toUpperCase();
       mode = 'random';
       modeDiv.textContent = 'Mode: Random Word';
     }
@@ -1196,5 +1207,4 @@
     buildBoard();
   </script>
 </body>
-
 </html>
