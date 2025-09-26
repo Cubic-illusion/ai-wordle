@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reverse Wordle </title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+    
+    :root{--tile:60px}
+    
+    body{
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      background: linear-gradient(45deg, #f7f1e3 0%, #e8dcc6 100%);
+      color: #2d3748;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+      min-height: 100vh;
+      position: relative;
+    }
+    
+    /* Paper texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        repeating-linear-gradient(
+          transparent,
+          transparent 24px,
+          rgba(148, 163, 184, 0.15) 24px,
+          rgba(148, 163, 184, 0.15) 26px
+        );
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Red margin line */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 80px;
+      width: 2px;
+      height: 100%;
+      background: rgba(255, 107, 107, 0.4);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* All content above the paper lines */
+    * {
+      position: relative;
+      z-index: 2;
+    }
+    
+    h1{
+      margin: 0;
+      font-size: 2.5rem;
+      color: #4a5568;
+      text-shadow: 2px 2px 0px rgba(74, 85, 104, 0.2);
+      transform: rotate(-1deg);
+      margin-bottom: 10px;
+    }
+    
+    p{
+      margin: 0;
+      color: #718096;
+      font-size: 1.1rem;
+      text-align: center;
+      max-width: 500px;
+      line-height: 1.4;
+      transform: rotate(0.5deg);
+    }
+    
+    .controls{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    
+    button{
+      padding: 12px 18px;
+      border-radius: 0;
+      border: 2px solid #4a5568;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      position: relative;
+      background: #fff;
+      color: #4a5568;
+      text-transform: lowercase;
+    }
+    
+    button:nth-child(1) { transform: rotate(-2deg); }
+    button:nth-child(2) { transform: rotate(1deg); }
+    button:nth-child(3) { transform: rotate(-1deg); }
+    button:nth-child(4) { transform: rotate(1.5deg); }
+    button:nth-child(5) { transform: rotate(-0.5deg); }
+    
+    button.primary{
+      background: #ff6b6b;
+      color: #fff;
+      border-color: #e53e3e;
+      box-shadow: 3px 3px 0px #e53e3e;
+    }
+    
+    button.ghost{
+      background: #fff;
+      color: #4a5568;
+      border-color: #4a5568;
+      box-shadow: 2px 2px 0px #4a5568;
+    }
+    
+    button:hover {
+      transform: rotate(0deg) translateY(-2px) !important;
+    }
+    
+    button.primary:hover {
+      box-shadow: 4px 4px 0px #e53e3e;
+    }
+    
+    button.ghost:hover {
+      box-shadow: 3px 3px 0px #4a5568;
+    }
+    
+    button:disabled{
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: rotate(0deg) !important;
+    }
+    
+    #meta{
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 15px 0;
+    }
+    
+    #mode{
+      background: rgba(255, 107, 107, 0.1);
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 13px;
+      border: 2px dashed #ff6b6b;
+      font-weight: 600;
+      transform: rotate(-1deg);
+    }
+    
+    #status{
+      color: #718096;
+      font-size: 14px;
+      font-weight: 600;
+      transform: rotate(0.5deg);
+    }
+    
+    #board{
+      margin-top: 20px;
+      display: grid;
+      grid-auto-rows: var(--tile);
+      gap: 12px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      border: 2px dashed #a0aec0;
+      box-shadow: 4px 4px 0px rgba(160, 174, 192, 0.3);
+      transform: rotate(-0.5deg);
+    }
+    
+    .row{
+      display: grid;
+      grid-template-columns: repeat(5,var(--tile));
+      gap: 10px;
+      justify-content: center;
+    }
+    
+    .tile{
+      width: var(--tile);
+      height: var(--tile);
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #fff;
+      font-weight: 700;
+      font-size: 24px;
+      cursor: default;
+      text-transform: uppercase;
+      color: #4a5568;
+      user-select: none;
+      border: 2px solid #4a5568;
+      transition: all 0.2s ease;
+      position: relative;
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+    }
+    
+    .tile:nth-child(1) { transform: rotate(-3deg); }
+    .tile:nth-child(2) { transform: rotate(2deg); }
+    .tile:nth-child(3) { transform: rotate(-1deg); }
+    .tile:nth-child(4) { transform: rotate(2.5deg); }
+    .tile:nth-child(5) { transform: rotate(-2deg); }
+    
+    .absent{
+      background: #f7fafc;
+      border-color: #a0aec0;
+      color: #a0aec0;
+      box-shadow: 1px 1px 0px #a0aec0;
+    }
+    
+    .present{
+      background: #fef5e7;
+      border-color: #d69e2e;
+      color: #d69e2e;
+      box-shadow: 2px 2px 0px #d69e2e;
+    }
+    
+    .correct{
+      background: #f0fff4;
+      border-color: #38a169;
+      color: #38a169;
+      box-shadow: 2px 2px 0px #38a169;
+    }
+    
+    /* Visual hint for the editable row */
+    .row.editable { 
+      transform: translateY(-3px); 
+    }
+    
+    .row.editable .tile { 
+      cursor: pointer;
+      box-shadow: 3px 3px 8px rgba(0,0,0,0.15);
+    }
+    
+    .row.editable .tile:hover {
+      transform: rotate(0deg) scale(1.05) !important;
+    }
+    
+    #secretReveal{
+      color: #d69e2e;
+      font-weight: 700;
+      background: rgba(214, 158, 46, 0.1);
+      padding: 6px 12px;
+      border-radius: 15px;
+      border: 2px dashed #d69e2e;
+      transform: rotate(1deg);
+    }
+    
+    #candidatesDump{
+      max-width: 900px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #4a5568;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 15px;
+      border-radius: 10px;
+      border: 2px dashed #a0aec0;
+      margin-top: 20px;
+      transform: rotate(-0.5deg);
+    }
+    
+    /* Loading indicator */
+    .loading {
+      color: #ff6b6b;
+      font-weight: 600;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Enhanced Win Screen Modal */
+    .win-modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .win-modal-content {
+      position: relative;
+      background: linear-gradient(45deg, #f7f1e3 0%, #e8dcc6 100%);
+      width: 90%;
+      max-width: 600px;
+      height: 80vh;
+      margin: 10vh auto;
+      border: 4px dashed #4a5568;
+      border-radius: 20px;
+      overflow: hidden;
+      transform: rotate(-1deg);
+      box-shadow: 12px 12px 0px rgba(74, 85, 104, 0.4);
+      animation: slideIn 0.6s ease-out 0.2s both;
+    }
+    
+    @keyframes slideIn {
+      from { 
+        transform: rotate(-1deg) translateY(-50px) scale(0.9);
+        opacity: 0;
+      }
+      to { 
+        transform: rotate(-1deg) translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+    
+    /* Paper texture and lines for the modal */
+    .win-modal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        repeating-linear-gradient(
+          transparent,
+          transparent 28px,
+          rgba(148, 163, 184, 0.2) 28px,
+          rgba(148, 163, 184, 0.2) 30px
+        );
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    /* Red margin line for the modal */
+    .win-modal-content::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 60px;
+      width: 3px;
+      height: 100%;
+      background: rgba(255, 107, 107, 0.5);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .win-content-inner {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 40px;
+      gap: 20px;
+    }
+    
+    /* Bottom button area */
+    .win-button-area {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-top: auto;
+    }
+    
+    .win-close-button {
+      background: #38a169;
+      color: white;
+      border: 3px solid #2f855a;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      font-weight: 700;
+      transform: rotate(1deg);
+      box-shadow: 4px 4px 0px #2f855a;
+      transition: all 0.3s ease;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .win-close-button:hover {
+      transform: rotate(0deg) translateY(-3px);
+      box-shadow: 6px 6px 0px #2f855a;
+      background: #48bb78;
+    }
+    
+    .win-play-again-button {
+      background: #ff6b6b;
+      color: white;
+      border: 3px solid #e53e3e;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+      font-weight: 700;
+      transform: rotate(-1deg);
+      box-shadow: 4px 4px 0px #e53e3e;
+      transition: all 0.3s ease;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .win-play-again-button:hover {
+      transform: rotate(0deg) translateY(-3px);
+      box-shadow: 6px 6px 0px #e53e3e;
+      background: #ff8787;
+    }
+    
+    /* Main content area */
+    .win-main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    
+    /* Decorative doodles */
+    .win-main-content::before {
+      content: '🎉';
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      font-size: 35px;
+      transform: rotate(-20deg);
+      animation: bounce 2s infinite;
+    }
+    
+    .win-main-content::after {
+      content: '✨';
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 30px;
+      transform: rotate(25deg);
+      animation: sparkle 3s infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: rotate(-20deg) translateY(0); }
+      40% { transform: rotate(-20deg) translateY(-10px); }
+      60% { transform: rotate(-20deg) translateY(-5px); }
+    }
+    
+    @keyframes sparkle {
+      0%, 50%, 100% { opacity: 1; transform: rotate(25deg) scale(1); }
+      25%, 75% { opacity: 0.7; transform: rotate(25deg) scale(1.2); }
+    }
+    
+    .win-title {
+      color: #38a169;
+      font-size: 3rem;
+      margin-bottom: 20px;
+      transform: rotate(-1deg);
+      text-shadow: 3px 3px 0px rgba(56, 161, 105, 0.3);
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    
+    .win-message {
+      color: #4a5568;
+      font-size: 1.4rem;
+      margin-bottom: 25px;
+      transform: rotate(0.5deg);
+      max-width: 400px;
+      line-height: 1.4;
+      font-weight: 600;
+    }
+    
+    .win-stats {
+      background: rgba(255, 255, 255, 0.6);
+      border: 3px dashed #a0aec0;
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+      transform: rotate(-0.5deg);
+      box-shadow: 4px 4px 0px rgba(160, 174, 192, 0.3);
+    }
+    
+    .win-stat {
+      margin: 8px 0;
+      color: #2d3748;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .win-word-reveal {
+      color: #d69e2e;
+      font-weight: 700;
+      font-size: 2rem;
+      background: rgba(214, 158, 46, 0.15);
+      padding: 15px 25px;
+      border-radius: 20px;
+      border: 3px dashed #d69e2e;
+      transform: rotate(1deg);
+      letter-spacing: 3px;
+      text-shadow: 2px 2px 0px rgba(214, 158, 46, 0.2);
+      margin: 15px 0;
+    }
+    
+    /* Fun floating elements */
+    .floating-doodle {
+      position: absolute;
+      font-size: 20px;
+      opacity: 0.6;
+      animation: float 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    
+    .floating-doodle:nth-child(1) {
+      top: 15%;
+      left: 15%;
+      animation-delay: 0s;
+    }
+    
+    .floating-doodle:nth-child(2) {
+      top: 25%;
+      right: 20%;
+      animation-delay: 1s;
+    }
+    
+    .floating-doodle:nth-child(3) {
+      bottom: 20%;
+      left: 25%;
+      animation-delay: 2s;
+    }
+    
+    .floating-doodle:nth-child(4) {
+      bottom: 30%;
+      right: 15%;
+      animation-delay: 1.5s;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-10px) rotate(5deg); }
+      66% { transform: translateY(5px) rotate(-3deg); }
+    }
+    
+    /* Add some doodle-like decorations */
+    .controls::before {
+      content: '✏️';
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      font-size: 20px;
+      opacity: 0.6;
+      transform: rotate(15deg);
+    }
+    
+    #board::after {
+      content: '📝';
+      position: absolute;
+      bottom: -15px;
+      right: -15px;
+      font-size: 18px;
+      opacity: 0.5;
+      transform: rotate(-20deg);
+    }
+    
+    /* Add a subtle paper curl effect */
+    #board::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(-45deg, transparent 45%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 55%, transparent 60%);
+      border-radius: 0 0 0 20px;
+      pointer-events: none;
+    }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      body::after {
+        left: 40px;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      button {
+        transform: rotate(0deg) !important;
+        margin: 2px 0;
+      }
+      
+      .tile {
+        transform: rotate(0deg) !important;
+      }
+      
+      #board {
+        transform: rotate(0deg);
+        padding: 15px;
+      }
+      
+      #meta {
+        flex-direction: column;
+      }
+      
+      #mode, #status, #secretReveal {
+        transform: rotate(0deg);
+      }
+      
+      .win-modal-content {
+        width: 95%;
+        height: 85vh;
+        margin: 7.5vh auto;
+        transform: rotate(0deg);
+        box-shadow: 8px 8px 0px rgba(74, 85, 104, 0.4);
+      }
+      
+      .win-content-inner {
+        flex-direction: column;
+        padding: 20px;
+        gap: 20px;
+      }
+      
+      .win-button-area {
+        flex: 0 0 auto;
+        flex-direction: row;
+        justify-content: center;
+        margin-top: auto;
+      }
+      
+      .win-close-button,
+      .win-play-again-button {
+        padding: 12px 20px;
+        transform: rotate(0deg);
+      }
+      
+      .win-close-button:hover,
+      .win-play-again-button:hover {
+        transform: translateY(-2px);
+      }
+      
+      .win-title {
+        font-size: 2.2rem;
+        transform: rotate(0deg);
+      }
+      
+      .win-message {
+        font-size: 1.2rem;
+        transform: rotate(0deg);
+      }
+      
+      .win-stats {
+        transform: rotate(0deg);
+      }
+      
+      .win-word-reveal {
+        transform: rotate(0deg);
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>~ Reverse Wordle ~</h1>
+  <p>🤖 AI guesses using optimized algorithms – you give feedback by clicking tiles (Gray → Yellow → Green).</p>
+
+  <div class="controls">
+    <button class="primary" id="guessBtn">Guess!</button>
+    <button class="ghost" id="confirmBtn">This is my word</button>
+    <button class="ghost" id="randomBtn">Random Word</button>
+    <button class="ghost" id="resetBtn">Reset</button>
+    <button class="ghost" id="editBtn">Edit Last Guess</button>
+  </div>
+
+  <div id="meta">
+    <div id="mode">Mode: Think-of-a-word</div>
+    <div id="status">Candidates left: —</div>
+    <div id="secretReveal" aria-live="polite"></div>
+  </div>
+
+  <div id="board" aria-live="polite"></div>
+  <div id="candidatesDump" style="display:none"></div>
+
+  <!-- Enhanced Win Screen Modal -->
+  <div id="winModal" class="win-modal">
+    <div class="win-modal-content">
+      <div class="win-content-inner">
+        <!-- Left side vertical buttons -->
+        <div class="win-button-area">
+          <button class="win-close-button" onclick="closeWinModal()">Awesome!</button>
+          <button class="win-play-again-button" onclick="playAgain()">Play Again</button>
+        </div>
+        
+        <!-- Main content area -->
+        <div class="win-main-content">
+          <div class="floating-doodle">🧠</div>
+          <div class="floating-doodle">🎯</div>
+          <div class="floating-doodle">📚</div>
+          <div class="floating-doodle">🔤</div>
+          
+          <h2 class="win-title">~ Victory! ~</h2>
+          <p class="win-message" id="winMessage">The AI cracked your secret word in just 4 guesses! 🎯</p>
+          
+          <div class="win-word-reveal" id="winWordReveal">SMART</div>
+          
+          <div class="win-stats">
+            <div class="win-stat" id="winGuessCount">Guesses Used: 4/6</div>
+            <div class="win-stat" id="winDifficulty">Difficulty: Expert Level</div>
+            <div class="win-stat" id="winStrategy">Strategy: Optimized Information Theory</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="words.js"></script>
+
+  <script> 
+
+    // Pre-computed best first guesses based on information theory
+    const BEST_OPENERS = ['arose', 'slate', 'crane', 'adieu', 'audio', 'soare', 'roate'];
+    
+    // Precomputed letter frequencies for faster scoring
+    const LETTER_FREQ = {
+      'a': 0.084, 'b': 0.020, 'c': 0.045, 'd': 0.033, 'e': 0.111, 'f': 0.018, 'g': 0.025,
+      'h': 0.030, 'i': 0.075, 'j': 0.002, 'k': 0.011, 'l': 0.054, 'm': 0.030, 'n': 0.066,
+      'o': 0.071, 'p': 0.031, 'q': 0.001, 'r': 0.068, 's': 0.088, 't': 0.067, 'u': 0.033,
+      'v': 0.010, 'w': 0.014, 'x': 0.003, 'y': 0.018, 'z': 0.001
+    };
+
+    // Memoization cache for expensive calculations
+    const scoreCache = new Map();
+    const feedbackCache = new Map();
+    
+    // Global variables
+    const maxRows = 6;
+    let currentRow = 0;
+    let lastGuess = "";
+    let mode = "think";
+    let usedGuesses = new Set();
+    let editableRowIndex = -1;
+    let guesses = [];
+    let secretWord = "";
+    let currentCandidates = [...dictionary];
+
+    const boardDiv = document.getElementById('board');
+    const statusDiv = document.getElementById('status');
+    const modeDiv = document.getElementById('mode');
+    const secretReveal = document.getElementById('secretReveal');
+    const candidatesDump = document.getElementById('candidatesDump');
+
+    // Fast feedback function with caching
+    function feedback(guess, target) {
+      guess = guess.toLowerCase();
+      target = target.toLowerCase();
+      const key = guess + '|' + target;
+      
+      if (feedbackCache.has(key)) {
+        return feedbackCache.get(key);
+      }
+      
+      const result = Array(5).fill('absent');
+      const pool = target.split('');
+      
+      // Mark correct positions first
+      for (let i = 0; i < 5; i++) {
+        if (guess[i] === pool[i]) {
+          result[i] = 'correct';
+          pool[i] = null;
+        }
+      }
+      
+      // Mark present positions
+      for (let i = 0; i < 5; i++) {
+        if (result[i] === 'absent') {
+          const idx = pool.indexOf(guess[i]);
+          if (idx !== -1) {
+            result[i] = 'present';
+            pool[idx] = null;
+          }
+        }
+      }
+      
+      feedbackCache.set(key, result);
+      return result;
+    }
+
+    // Optimized word scoring using letter frequency
+    function getWordScore(word) {
+      if (scoreCache.has(word)) {
+        return scoreCache.get(word);
+      }
+      
+      const letters = new Set(word.toLowerCase());
+      let score = 0;
+      
+      for (const letter of letters) {
+        score += LETTER_FREQ[letter] || 0;
+      }
+      
+      // Bonus for common letter positions
+      const w = word.toLowerCase();
+      if ('aeiou'.includes(w[1])) score += 0.1; // Vowel in position 2
+      if ('rst'.includes(w[0])) score += 0.05;  // Common starting letters
+      
+      scoreCache.set(word, score);
+      return score;
+    }
+
+    // Ultra-fast best guess selection
+    function chooseBestGuess(candidates, guessSpace) {
+      // First guess optimization
+      if (currentRow === 0) {
+        return BEST_OPENERS[0]; // Instant first guess
+      }
+      
+      // If very few candidates, just pick the best one
+      if (candidates.length <= 2) {
+        return candidates[0];
+      }
+      
+      // Limit search space for performance
+      const searchSpace = candidates.length > 50 ? 
+        [...candidates.slice(0, 100), ...BEST_OPENERS] : 
+        guessSpace;
+      
+      let bestWord = searchSpace[0];
+      let bestScore = -1;
+      
+      // Sample-based scoring for large candidate sets
+      const sampleSize = Math.min(candidates.length, 200);
+      const candidateSample = candidates.length > sampleSize ? 
+        candidates.slice(0, sampleSize) : candidates;
+      
+      for (const guess of searchSpace.slice(0, 500)) { // Limit guesses checked
+        if (usedGuesses.has(guess)) continue;
+        
+        const partitions = new Map();
+        
+        for (const target of candidateSample) {
+          const fb = feedback(guess, target).join('');
+          partitions.set(fb, (partitions.get(fb) || 0) + 1);
+        }
+        
+        // Calculate information gain (entropy reduction)
+        let score = 0;
+        const total = candidateSample.length;
+        
+        for (const count of partitions.values()) {
+          const p = count / total;
+          score -= p * Math.log2(p);
+        }
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestWord = guess;
+        }
+      }
+      
+      return bestWord;
+    }
+
+    function buildBoard(){
+      boardDiv.innerHTML = '';
+      for (let r = 0; r < maxRows; r++){
+        const row = document.createElement('div');
+        row.className = 'row';
+        for (let c = 0; c < 5; c++){
+          const t = document.createElement('div');
+          t.className = 'tile absent';
+          t.textContent = '';
+          row.appendChild(t);
+        }
+        boardDiv.appendChild(row);
+      }
+      currentRow = 0;
+      lastGuess = '';
+      mode = 'think';
+      usedGuesses.clear();
+      editableRowIndex = -1;
+      secretWord = "";
+      currentCandidates = [...dictionary];
+      updateStatus('—');
+      secretReveal.textContent = '';
+      dumpCandidates(null);
+    }
+
+    function resetGame(){ buildBoard(); }
+
+    function randomWord(){
+      const w = dictionary[Math.floor(Math.random()*dictionary.length)];
+      secretWord = w.toLowerCase();
+      secretReveal.textContent = 'Secret (for you): ' + w.toUpperCase();
+      mode = 'random';
+      modeDiv.textContent = 'Mode: Random Word';
+    }
+
+    function cycleTile(tile){
+      if (!tile.textContent) return;
+      if (tile.classList.contains('absent')) { 
+        tile.classList.remove('absent'); 
+        tile.classList.add('present'); 
+      }
+      else if (tile.classList.contains('present')) { 
+        tile.classList.remove('present'); 
+        tile.classList.add('correct'); 
+      }
+      else { 
+        tile.classList.remove('correct'); 
+        tile.classList.add('absent'); 
+      }
+    }
+
+    function readGuessFromRow(rIndex){
+      const row = boardDiv.children[rIndex];
+      return Array.from(row.children).map(t => (t.textContent||'').toLowerCase()).join('');
+    }
+    
+    function readFeedbackFromRow(rIndex){
+      const row = boardDiv.children[rIndex];
+      return Array.from(row.children).map(t => 
+        t.classList.contains('correct') ? 'correct' : 
+        t.classList.contains('present') ? 'present' : 'absent'
+      );
+    }
+
+    // Optimized constraint checking
+    function consistentWithAllRows(candidate){
+      candidate = candidate.toLowerCase();
+
+      for (let r = 0; r < currentRow; r++) {
+        const guess = readGuessFromRow(r);
+        const fb = readFeedbackFromRow(r);
+
+        // Quick position checks
+        for (let i = 0; i < 5; i++) {
+          if (fb[i] === "correct" && candidate[i] !== guess[i]) return false;
+          if (fb[i] === "present" && candidate[i] === guess[i]) return false;
+        }
+
+        // Letter count constraints
+        const letterCounts = {};
+        const requiredCounts = {};
+        
+        for (let i = 0; i < 5; i++) {
+          const letter = candidate[i];
+          letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+          
+          if (fb[i] !== "absent") {
+            const guessLetter = guess[i];
+            requiredCounts[guessLetter] = (requiredCounts[guessLetter] || 0) + 1;
+          }
+        }
+
+        // Validate constraints
+        for (let i = 0; i < 5; i++) {
+          const guessLetter = guess[i];
+          
+          if (fb[i] === "present" && !candidate.includes(guessLetter)) return false;
+          if (fb[i] === "absent" && !requiredCounts[guessLetter] && candidate.includes(guessLetter)) return false;
+        }
+
+        for (const [letter, required] of Object.entries(requiredCounts)) {
+          if ((letterCounts[letter] || 0) < required) return false;
+        }
+      }
+      return true;
+    }
+
+    function updateStatus(n){ 
+      statusDiv.textContent = typeof n === 'number' ? `Candidates left: ${n}` : `Candidates left: ${n}`;
+    }
+
+    function dumpCandidates(list){
+      if (!list || !list.length){ 
+        candidatesDump.style.display='none'; 
+        candidatesDump.textContent=''; 
+        return; 
+      }
+      candidatesDump.style.display='block';
+      candidatesDump.textContent = 'Matching words (first 200):\n' + 
+        list.slice(0,200).map(w=>w.toUpperCase()).join(', ');
+    }
+
+    function setRowEditable(rIndex, editable){
+      if (rIndex < 0 || rIndex >= maxRows) return;
+      const row = boardDiv.children[rIndex];
+      if (!row) return;
+      
+      if (editable) row.classList.add('editable'); 
+      else row.classList.remove('editable');
+      
+      Array.from(row.children).forEach(tile => {
+        if (!tile.textContent) { 
+          tile.onclick = null; 
+          tile.style.cursor = 'default'; 
+          tile.tabIndex = -1; 
+          return; 
+        }
+        if (editable) {
+          tile.onclick = () => cycleTile(tile);
+          tile.style.cursor = 'pointer';
+          tile.tabIndex = 0;
+        } else {
+          tile.onclick = null;
+          tile.style.cursor = 'default';
+          tile.tabIndex = -1;
+        }
+      });
+    }
+
+    function checkWinCondition() {
+      if (editableRowIndex === -1) return false;
+      const row = boardDiv.children[editableRowIndex];
+      const tiles = Array.from(row.children);
+      return tiles.every(tile => tile.classList.contains('correct'));
+    }
+
+    function showWinModal(word, guessCount) {
+      const modal = document.getElementById('winModal');
+      const message = document.getElementById('winMessage');
+      const wordReveal = document.getElementById('winWordReveal');
+      const guessCountElement = document.getElementById('winGuessCount');
+      const difficulty = document.getElementById('winDifficulty');
+      
+      wordReveal.textContent = word.toUpperCase();
+      guessCountElement.textContent = `Guesses Used: ${guessCount}/6`;
+      
+      // Set difficulty based on guess count
+      let difficultyText;
+      if (guessCount <= 2) difficultyText = "Legendary Level";
+      else if (guessCount <= 3) difficultyText = "Expert Level";
+      else if (guessCount <= 4) difficultyText = "Advanced Level";
+      else difficultyText = "Standard Level";
+      difficulty.textContent = `Difficulty: ${difficultyText}`;
+      
+      if (mode === 'random') {
+        message.textContent = `The AI cracked your secret word "${word.toUpperCase()}" in just ${guessCount} guesses! 🎯`;
+      } else {
+        message.textContent = `Awesome! The AI figured out your word "${word.toUpperCase()}" in ${guessCount} ${guessCount === 1 ? 'guess' : 'guesses'}! 🧠✨`;
+      }
+      
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeWinModal() {
+      document.getElementById('winModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    function playAgain() {
+      closeWinModal();
+      resetGame();
+    }
+
+    // Optimized main guessing function
+    function nextGuess(){
+      if (currentRow >= maxRows){ 
+        alert('No more guesses left (6 rows).'); 
+        return; 
+      }
+
+      // Show loading indicator
+      statusDiv.innerHTML = '<span class="loading">🤖 Thinking...</span>';
+      
+      // Use setTimeout to allow UI to update
+      setTimeout(() => {
+        const matches = currentCandidates.filter(w => consistentWithAllRows(w));
+        currentCandidates = matches; // Cache for next iteration
+        
+        updateStatus(matches.length);
+        dumpCandidates(matches);
+
+        if (matches.length === 0) { 
+          alert("No words left match your clues."); 
+          return; 
+        }
+
+        let guess;
+        if (matches.length === 1) {
+          guess = matches[0];
+        } else {
+          // Use optimized algorithm
+          guess = chooseBestGuess(matches, dictionary);
+        }
+
+        lastGuess = guess;
+        usedGuesses.add(guess);
+
+        const rowIndex = currentRow;
+        const row = boardDiv.children[rowIndex];
+        for (let i = 0; i < 5; i++){
+          const t = row.children[i];
+          t.textContent = guess[i].toUpperCase();
+          t.className = 'tile absent';
+        }
+
+        if (rowIndex > 0) setRowEditable(rowIndex - 1, false);
+        setRowEditable(rowIndex, true);
+        editableRowIndex = rowIndex;
+
+        currentRow++;
+        updateStatus(matches.length);
+      }, 50); // Small delay to show loading
+    }
+
+    function confirmGuess() {
+      if (editableRowIndex === -1) {
+        alert("No guess to confirm yet - make a guess first!");
+        return;
+      }
+
+      const guessWord = readGuessFromRow(editableRowIndex);
+      
+      if (mode === 'think') {
+        showWinModal(guessWord, editableRowIndex + 1);
+      } else if (mode === 'random') {
+        if (guessWord === secretWord) {
+          const row = boardDiv.children[editableRowIndex];
+          for (let i = 0; i < 5; i++) {
+            row.children[i].className = "tile correct";
+          }
+          setRowEditable(editableRowIndex, false);
+          showWinModal(guessWord, editableRowIndex + 1);
+        } else {
+          alert("Not correct yet – keep going!");
+        }
+      }
+    }
+
+    function editPreviousGuess(){
+      if (currentRow < 2){ 
+        alert("No earlier guess to edit yet."); 
+        return; 
+      }
+      const lastRowIndex = currentRow - 1;
+      const lastRow = boardDiv.children[lastRowIndex];
+      Array.from(lastRow.children).forEach(tile => {
+        tile.textContent = '';
+        tile.className = 'tile absent';
+        tile.onclick = null;
+      });
+      currentRow--;  
+      setRowEditable(currentRow - 1, true);
+      editableRowIndex = currentRow - 1;
+      statusDiv.textContent = 'Editing feedback for row ' + currentRow + '. (Last guess deleted)';
+      
+      // Reset candidates cache
+      currentCandidates = [...dictionary];
+    }
+
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+      const modal = document.getElementById('winModal');
+      if (event.target === modal) {
+        closeWinModal();
+      }
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeWinModal();
+      }
+    });
+
+    document.getElementById('guessBtn').addEventListener('click', nextGuess);
+    document.getElementById('confirmBtn').addEventListener('click', confirmGuess);
+    document.getElementById('randomBtn').addEventListener('click', randomWord);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+    document.getElementById('editBtn').addEventListener('click', editPreviousGuess);
+
+    buildBoard();
+  </script>
+</body>
+</html>
